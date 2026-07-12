@@ -1,0 +1,28 @@
+venv/
+__pycache__/
+*.pyc
+
+# Database files
+*.db
+
+# Personal face images
+dataset/images/
+faces/*
+!faces/.gitkeep
+
+# Encodings
+encodings/*
+!encodings/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Environment files
+.env
+
+# IDE files
+.vscode/
+
+# Streamlit
+.streamlit/
