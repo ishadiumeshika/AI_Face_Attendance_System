@@ -1,51 +1,54 @@
+import cv2
 import face_recognition
-import numpy as np
-
-
-def encode_face(image_path):
-    """
-    Convert a face image file into a face encoding.
-    Used during registration.
-    """
-
-    image = face_recognition.load_image_file(image_path)
-
-    encodings = face_recognition.face_encodings(image)
-
-    if len(encodings) == 0:
-        return None
-
-    return encodings[0].tolist()
-
 
 
 def encode_face_from_frame(frame):
     """
-    Convert a camera frame into a face encoding.
-    Used for live camera recognition.
+    Convert a face image from camera frame into a face encoding.
+
+    Input:
+        frame - OpenCV image (BGR)
+
+    Output:
+        128-d face encoding or None
     """
 
-    encodings = face_recognition.face_encodings(frame)
+    try:
 
-    if len(encodings) == 0:
+        # Check image exists
+        if frame is None:
+            return None
+
+
+        # Check image is not empty
+        if frame.size == 0:
+            return None
+
+
+        # Convert OpenCV BGR image to RGB
+        rgb_frame = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2RGB
+        )
+
+
+        # Generate face encodings
+        encodings = face_recognition.face_encodings(
+            rgb_frame
+        )
+
+
+        # No face found
+        if len(encodings) == 0:
+            return None
+
+
+        # Return first face encoding
+        return encodings[0]
+
+
+    except Exception as e:
+
+        print("Face encoding error:", e)
+
         return None
-
-    return encodings[0].tolist()
-
-
-
-def compare_faces(known_encoding, unknown_encoding, tolerance=0.6):
-    """
-    Compare two face encodings.
-    """
-
-    known = np.array(known_encoding)
-    unknown = np.array(unknown_encoding)
-
-    result = face_recognition.compare_faces(
-        [known],
-        unknown,
-        tolerance=tolerance
-    )
-
-    return result[0]

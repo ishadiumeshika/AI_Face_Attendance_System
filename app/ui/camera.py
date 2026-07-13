@@ -1,118 +1,134 @@
 import cv2
-
-from app.recognition.face_detector import detect_faces
-from app.recognition.face_encoder import encode_face_from_frame
-from app.recognition.face_recognizer import recognize_face
+import face_recognition
 
 
-def start_camera():
+from app.recognition.face_engine import FaceRecognitionEngine
+from app.database.attendance import mark_attendance
+from app.database.user import get_user_by_name
 
-    video = cv2.VideoCapture(0)
 
-    if not video.isOpened():
+def main():
+
+    engine = FaceRecognitionEngine()
+
+    camera = cv2.VideoCapture(0)
+
+
+    if not camera.isOpened():
+
         print("Camera not found")
         return
 
 
+    print("Camera started...")
+    print("Press Q to quit")
+
+
     while True:
 
-        ret, frame = video.read()
+        ret, frame = camera.read()
+
 
         if not ret:
             break
 
 
-        # Small image only for detection
-        small_frame = cv2.resize(
-            frame,
-            (0, 0),
-            fx=0.25,
-            fy=0.25
-        )
 
-        rgb_small = small_frame[:, :, ::-1]
+        locations, names = engine.recognize(frame)
 
 
-        # Detect faces
-        small_locations = detect_faces(rgb_small)
+
+        for (top, right, bottom, left), name in zip(
+            locations,
+            names
+        ):
 
 
-        for small_location in small_locations:
-
-            small_top, small_right, small_bottom, small_left = small_location
+            color = (0,255,0)
 
 
-            # Convert coordinates to original frame
-            top = small_top * 4
-            right = small_right * 4
-            bottom = small_bottom * 4
-            left = small_left * 4
+            if name == "Unknown":
+
+                color = (0,0,255)
 
 
-            # Add margin around face
-            top = max(0, top - 20)
-            left = max(0, left - 20)
-            bottom = min(frame.shape[0], bottom + 20)
-            right = min(frame.shape[1], right + 20)
-
-
-            # Crop from ORIGINAL frame
-            face_image = frame[
-                top:bottom,
-                left:right
-            ]
-
-
-            # Convert crop to RGB
-            rgb_face = cv2.cvtColor(
-                face_image,
-                cv2.COLOR_BGR2RGB
-            )
-
-
-            name = "Unknown"
-
-
-            if rgb_face.size != 0:
-
-                encoding = encode_face_from_frame(rgb_face)
-
-
-                if encoding is not None:
-                    name = recognize_face(encoding)
-
-
-            # Draw box
             cv2.rectangle(
                 frame,
                 (left, top),
                 (right, bottom),
-                (0,255,0),
+                color,
                 2
+            )
+
+
+            cv2.rectangle(
+                frame,
+                (left, bottom-35),
+                (right, bottom),
+                color,
+                cv2.FILLED
             )
 
 
             cv2.putText(
                 frame,
                 name,
-                (left, top - 10),
+                (left+6, bottom-6),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
-                (0,255,0),
+                (255,255,255),
                 2
             )
 
 
+
+            if name != "Unknown":
+
+
+                user = get_user_by_name(name)
+
+
+                if user:
+
+
+                    success = mark_attendance(
+                        user["id"]
+                    )
+
+
+                    if success:
+
+                        print(
+                            f"Attendance marked: {name}"
+                        )
+
+
+
         cv2.imshow(
-            "AI Face Attendance Camera",
+            "AI Face Attendance System",
             frame
         )
 
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+
+        key = cv2.waitKey(1)
+
+
+        if key == ord("q"):
+
             break
 
 
 
-    video.release()
+    camera.release()
     cv2.destroyAllWindows()
+
+
+def start_camera():
+
+    main()
+
+
+if __name__ == "__main__":
+
+    start_camera()
