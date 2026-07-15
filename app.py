@@ -1,8 +1,7 @@
 import streamlit as st
-
 from streamlit_option_menu import option_menu
 
-from app.ui.dashboard import show_dashboard
+from app.ui.live_attendance import live_attendance_page
 
 
 st.set_page_config(
@@ -12,48 +11,116 @@ st.set_page_config(
 )
 
 
+# -----------------------------
+# Session State Initialization
+# -----------------------------
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+
+if "name" not in st.session_state:
+    st.session_state.name = None
+
+if "role" not in st.session_state:
+    st.session_state.role = None
+
+
+
+# -----------------------------
+# Sidebar Menu
+# -----------------------------
+
 with st.sidebar:
 
+    st.title("👤 AI Attendance")
+
+
+    menu = [
+        "Live Attendance",
+        "Login",
+        "Register"
+    ]
+
+
+    # Logout appears only after login
+
+    if st.session_state.logged_in:
+        menu.append("Logout")
+
+
+
     selected = option_menu(
-        "AI Attendance",
-        [
-            "Dashboard",
-            "Register Person",
-            "Live Attendance",
-            "Attendance History",
-            "Manage Users"
-        ],
+        "Menu",
+        menu,
         icons=[
-            "house",
-            "person-plus",
             "camera",
-            "clipboard-data",
-            "people"
-        ]
+            "box-arrow-in-right",
+            "person-plus",
+            "box-arrow-right"
+        ],
+        default_index=0
     )
 
 
-if selected == "Dashboard":
-
-    show_dashboard()
+    st.divider()
 
 
-elif selected == "Register Person":
+    # Show current user
+
+    if st.session_state.logged_in:
+
+        st.success(
+            f"👤 {st.session_state.name}"
+        )
+
+        st.info(
+            f"Role: {st.session_state.role}"
+        )
+
+
+
+# -----------------------------
+# Main Page Routing
+# -----------------------------
+
+if selected == "Live Attendance":
+
+    live_attendance_page()
+
+
+
+elif selected == "Login":
+
+    from app.ui.login_page import login_page
+
+    login_page()
+
+
+
+elif selected == "Register":
 
     from app.ui.register_page import register_page
 
     register_page()
 
 
-elif selected == "Live Attendance":
 
-    from app.ui.live_attendance import live_attendance_page
+elif selected == "Logout":
 
-    live_attendance_page()
+    st.session_state.logged_in = False
+
+    st.session_state.user_id = None
+
+    st.session_state.name = None
+
+    st.session_state.role = None
 
 
-elif selected == "Attendance History":
+    st.success(
+        "Logged out successfully"
+    )
 
-    from app.ui.attendance_page import attendance_page
-
-    attendance_page()
+    st.rerun()

@@ -1,7 +1,7 @@
 import streamlit as st
 import cv2
-import time
 import face_recognition
+import time
 
 from app.database.user import (
     add_user,
@@ -12,76 +12,106 @@ from app.database.user import (
 
 def register_page():
 
-    st.title("👤 Register New Person")
+    st.title("📝 Register New User")
 
 
-    name = st.text_input(
-        "Enter person name"
+    st.write(
+        "Create your account and register your face."
     )
 
 
-    if st.button("📷 Start Face Capture"):
+    name = st.text_input(
+        "Full Name"
+    )
 
 
-        if name.strip() == "":
-
-            st.warning(
-                "Please enter a name"
-            )
-
-            return
+    email = st.text_input(
+        "Email Address"
+    )
 
 
-        if get_user_by_name(name):
+    password = st.text_input(
+        "Password",
+        type="password"
+    )
+
+
+
+    if st.button("📷 Register Face"):
+
+
+        if not name or not email or not password:
 
             st.error(
-                "Person already registered"
+                "Please fill all fields."
             )
 
             return
 
+
+
+    
+        st.info(
+            "Look at the camera. Capturing face samples..."
+        )
 
 
         camera = cv2.VideoCapture(0)
 
 
+        if not camera.isOpened():
+
+            st.error(
+                "Camera not found."
+            )
+
+            return
+
+
+
         encodings = []
 
 
-        progress = st.progress(0)
+        sample_count = 20
 
 
-        window = st.empty()
+        camera_window = st.empty()
 
 
-        while len(encodings) < 20:
+
+        while len(encodings) < sample_count:
 
 
             ret, frame = camera.read()
 
 
             if not ret:
+
                 break
 
 
-            window.image(
+
+            camera_window.image(
                 frame,
                 channels="BGR"
             )
 
 
-            rgb = cv2.cvtColor(
+
+            rgb_frame = cv2.cvtColor(
                 frame,
                 cv2.COLOR_BGR2RGB
             )
 
 
+
             faces = face_recognition.face_encodings(
-                rgb
+                rgb_frame
             )
 
 
-            if faces:
+
+            if len(faces) > 0:
 
 
                 encodings.append(
@@ -89,8 +119,8 @@ def register_page():
                 )
 
 
-                progress.progress(
-                    len(encodings)/20
+                st.write(
+                    f"Captured {len(encodings)}/{sample_count}"
                 )
 
 
@@ -101,26 +131,76 @@ def register_page():
         camera.release()
 
 
-        if len(encodings) == 20:
+
+        if len(encodings) < sample_count:
 
 
-            user_id = add_user(name)
-
-
-            for encoding in encodings:
-
-                add_face_encoding(
-                    user_id,
-                    encoding
-                )
-
-
-            st.success(
-                f"{name} registered successfully"
+            st.error(
+                "Face registration failed. Try again."
             )
+
+            return
+
+
+
+        # Create user account
+
+        result = add_user(
+            name,
+            email,
+            password
+        )
+
+
+
+        if result == "EMAIL_EXISTS":
+
+
+            st.error(
+                "❌ This email is already registered. Use another email."
+            )
+
+            return
+
+
+
+
+
+        elif result == "ERROR":
+
+
+            st.error(
+                "❌ Registration failed."
+            )
+
+            return
+
+
 
         else:
 
-            st.error(
-                "Registration failed"
+
+            user_id = result
+
+
+
+        # Save face encodings
+
+        for encoding in encodings:
+
+
+            add_face_encoding(
+                user_id,
+                encoding
             )
+
+
+
+        st.success(
+            f"✅ Registration completed. Your User ID is {user_id}"
+        )
+
+
+        st.info(
+            f"Saved {len(encodings)} face samples."
+        )

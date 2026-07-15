@@ -1,23 +1,140 @@
+import sqlite3
 import json
 
 from app.database.db_connection import get_connection
 
-
-def add_user(name):
+def add_user(name, email, password):
     """
-    Add a new user.
+    Add a new employee.
     """
 
     conn = get_connection()
     cursor = conn.cursor()
+    try:
+
+        cursor.execute(
+            """
+            INSERT INTO users
+            (
+                name,
+                email,
+                password
+            )
+
+            VALUES (?, ?, ?)
+            """,
+            (
+                name,
+                email,
+                password
+            )
+        )
+
+
+        conn.commit()
+
+
+        
+
+
+        return user_id
+
+
+    except sqlite3.IntegrityError as e:
+
+        conn.rollback()
+
+
+        error_message = str(e)
+
+
+        if "email" in error_message:
+
+            return "EMAIL_EXISTS"
+
+
+        
+
+        return "ERROR"
+
+
+    finally:
+
+        conn.close()
+    # Check if email already exists
 
     cursor.execute(
         """
-        INSERT INTO users (name)
-        VALUES (?)
+        SELECT id
+        FROM users
+        WHERE email = ?
         """,
-        (name,)
+        (email,)
     )
+
+    existing = cursor.fetchone()
+
+    if existing:
+
+        conn.close()
+
+        raise Exception(
+            "Email already registered"
+        )
+
+
+    # Generate Employee ID
+
+    cursor.execute(
+        """
+        SELECT id
+        FROM users
+        ORDER BY id DESC
+        LIMIT 1
+        """
+    )
+
+    last = cursor.fetchone()
+
+
+    if last:
+
+        employee_id = (
+            "EMP"
+            + str(
+                1000 + last["id"] + 1
+            )
+        )
+
+    else:
+
+        employee_id = "EMP1001"
+
+
+    # Insert new user
+
+    cursor.execute(
+        """
+        INSERT INTO users
+        (
+            employee_id,
+            name,
+            email,
+            password,
+            role
+        )
+
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            employee_id,
+            name,
+            email,
+            password,
+            "Employee"
+        )
+    )
+
 
     conn.commit()
 
@@ -25,40 +142,10 @@ def add_user(name):
 
     conn.close()
 
-    return user_id
-
-
-def add_face_encoding(user_id, face_encoding):
-    """
-    Save one face encoding for a user.
-    """
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    encoding_json = json.dumps(face_encoding)
-
-    cursor.execute(
-        """
-        INSERT INTO face_encodings
-        (user_id, encoding)
-
-        VALUES (?, ?)
-        """,
-        (
-            user_id,
-            encoding_json
-        )
-    )
-
-    conn.commit()
-    conn.close()
-
-
+    return user_id, employee_id
 def get_all_users():
     """
-    Return every face encoding together with the user's name.
-    One user may have multiple encodings.
+    Return every face encoding together with user details.
     """
 
     conn = get_connection()
@@ -69,6 +156,8 @@ def get_all_users():
         SELECT
             users.id,
             users.name,
+            users.employee_id,
+            users.email,
             face_encodings.encoding
 
         FROM users
@@ -83,32 +172,6 @@ def get_all_users():
     conn.close()
 
     return users
-
-
-def get_user_by_id(user_id):
-    """
-    Get one user by ID.
-    """
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT *
-        FROM users
-        WHERE id = ?
-        """,
-        (user_id,)
-    )
-
-    user = cursor.fetchone()
-
-    conn.close()
-
-    return user
-
-
 def get_user_by_name(name):
     """
     Get one user by name.
@@ -131,37 +194,83 @@ def get_user_by_name(name):
     conn.close()
 
     return user
+def add_face_encoding(user_id, face_encoding):
 
+    conn = get_connection()
+    cursor = conn.cursor()
 
-def user_exists(name):
-    """
-    Check whether a user already exists.
-    """
+    encoding_json = json.dumps(face_encoding)
 
-    return get_user_by_name(name) is not None
+    cursor.execute(
+        """
+        INSERT INTO face_encodings
+        (user_id, encoding)
 
+        VALUES (?, ?)
+        """,
+        (
+            user_id,
+            encoding_json
+        )
+    )
 
-def delete_user(user_id):
-    """
-    Delete a user and all of their face encodings.
-    """
+    conn.commit()
+    conn.close()
+
+def get_user_by_id(user_id):
 
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        DELETE FROM face_encodings
-        WHERE user_id = ?
+        SELECT *
+        FROM users
+        WHERE id = ?
         """,
         (user_id,)
     )
 
+    user = cursor.fetchone()
+
+    conn.close()
+
+    return user
+def login_user(email, password):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
     cursor.execute(
         """
-        DELETE FROM users
-        WHERE id = ?
+        SELECT *
+        FROM users
+        WHERE email = ?
+        AND password = ?
         """,
+        (
+            email,
+            password
+        )
+    )
+
+    user = cursor.fetchone()
+
+    conn.close()
+
+    return user
+def delete_user(user_id):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM face_encodings WHERE user_id=?",
+        (user_id,)
+    )
+
+    cursor.execute(
+        "DELETE FROM users WHERE id=?",
         (user_id,)
     )
 

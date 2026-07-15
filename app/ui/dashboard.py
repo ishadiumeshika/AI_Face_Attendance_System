@@ -1,28 +1,37 @@
 import streamlit as st
 from datetime import datetime
 
-from app.database.user import get_all_users
+from app.database.user import get_registered_users
 from app.database.attendance import get_attendance_history
 
 
 def show_dashboard():
 
-    st.title("👤 AI Face Attendance System")
+    st.title("🤖 AI Face Attendance System")
+
+    st.write(
+        "An automated attendance management system "
+        "using facial recognition technology."
+    )
+
+    st.divider()
 
 
-    users = get_all_users()
+    users = get_registered_users()
     attendance = get_attendance_history()
 
 
-    col1, col2 = st.columns(2)
+    # Dashboard metrics
+
+    col1, col2, col3 = st.columns(3)
 
 
     with col1:
 
         st.metric(
-            "Registered Users",
-            len(set([u["name"] for u in users]))
-        )
+    "👥 Registered Users",
+    len(set([u["name"] for u in users]))
+) 
 
 
     with col2:
@@ -38,18 +47,38 @@ def show_dashboard():
 
 
         st.metric(
-            "Today's Attendance",
+            "📅 Today's Attendance",
             today_count
         )
+
+
+    with col3:
+
+        if attendance:
+
+            latest = attendance[-1]
+
+            st.metric(
+                "🕒 Last Attendance",
+                latest["time"]
+            )
+
+        else:
+
+            st.metric(
+                "🕒 Last Attendance",
+                "No records"
+            )
 
 
     st.divider()
 
 
-    st.subheader("Attendance History")
+    st.subheader("📋 Attendance Records")
 
 
     if attendance:
+
 
         data = []
 
@@ -58,16 +87,18 @@ def show_dashboard():
 
             data.append(
                 {
+                    "User ID": row["user_id"],
                     "Name": row["name"],
                     "Date": row["date"],
-                    "Time": row["time"]
+                    "Time": row["time"],
+                    "Status": row["status"]
                 }
             )
 
 
         st.dataframe(
             data,
-            use_container_width=True
+            width="stretch"
         )
 
 
@@ -78,22 +109,16 @@ def show_dashboard():
         )
 
 
-
     st.divider()
 
 
-    st.subheader("Actions")
+    st.subheader("⚙️ System Information")
 
 
-    if st.button("📷 Start Camera Attendance"):
+    st.success(
+        "Face Recognition Engine: Active"
+    )
 
-        st.info(
-            "Run camera mode from terminal: python camera.py"
-        )
-
-
-    if st.button("👤 Register New Person"):
-
-        st.info(
-            "Run registration from terminal: python register.py"
-        )
+    st.success(
+        "Database Connection: Active"
+    )
