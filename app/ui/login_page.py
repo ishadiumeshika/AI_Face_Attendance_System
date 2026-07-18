@@ -43,9 +43,11 @@ def login_page():
             st.session_state.role = user["role"]
 
 
+            st.balloons()
+
             st.success(
-                "Login successful"
-            )
+            f"Welcome {user['name']}"
+        )
 
 
             st.rerun()

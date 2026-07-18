@@ -1,187 +1,131 @@
 import streamlit as st
-import cv2
-
-from datetime import datetime
-
-from app.recognition.face_engine import FaceRecognitionEngine
-from app.database.attendance import mark_attendance
-from app.database.user import get_user_by_name
 
 
-
-def live_attendance_page():
-
-    st.title("📷 Live Attendance")
+from app.database.user import get_user_by_id
 
 
-    # Camera button
+def attendance_page():
 
-    if "camera_started" not in st.session_state:
-        st.session_state.camera_started = False
-
+    st.title("📋 Attendance History")
 
 
-    if not st.session_state.camera_started:
+    records = get_attendance_history()
 
 
-        st.markdown(
-            """
-            <style>
-            div.stButton > button {
-                width: 250px;
-                height: 150px;
-                font-size: 60px;
-                border-radius: 20px;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+    if not records:
 
-
-        col1, col2, col3 = st.columns(3)
-
-
-        with col2:
-
-            if st.button("📷"):
-
-                st.session_state.camera_started = True
-
-                st.rerun()
-
-
-
-        st.info(
-            "Click the camera button to start attendance"
-        )
-
+        st.info("No attendance records found")
 
         return
 
 
 
-    # Camera started
-
-    st.success(
-        "Camera started. Face the camera."
-    )
+    table_data = []
 
 
-    engine = FaceRecognitionEngine()
+    for row in records:
 
-
-    camera = cv2.VideoCapture(0)
-
-
-    frame_window = st.empty()
-
-
-    stop_button = st.button(
-        "⛔ Stop Camera"
-    )
-
-
-
-    while not stop_button:
-
-
-        ret, frame = camera.read()
-
-
-        if not ret:
-            break
-
-
-
-        locations, names = engine.recognize(
-            frame
+        user = get_user_by_id(
+            row["user_id"]
         )
 
 
-        for (top, right, bottom, left), name in zip(
-            locations,
-            names
-        ):
+        name = "Unknown"
 
 
-            color = (0,0,255)
-
-            display_text = name
-
+        if user:
+            name = user["name"]
 
 
-            if name != "Unknown":
-
-
-                color = (0,255,0)
-
-
-                user = get_user_by_name(
-                    name
-                )
-
-
-                if user:
-
-
-                    marked = mark_attendance(
-                        user["id"]
-                    )
-
-
-                    current_time = datetime.now().strftime(
-                        "%H:%M:%S"
-                    )
-
-
-                    display_text = (
-                        f"{name} | {current_time}"
-                    )
-
-
-                    if marked:
-
-                        st.success(
-                            f"Attendance marked: {name}"
-                        )
-
-
-
-            cv2.rectangle(
-                frame,
-                (left,top),
-                (right,bottom),
-                color,
-                2
-            )
-
-
-            cv2.putText(
-                frame,
-                display_text,
-                (left, top-10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                color,
-                2
-            )
-
-
-
-        frame_window.image(
-            frame,
-            channels="BGR",
-            width="stretch"
+        table_data.append(
+            {
+                "Name": name,
+                "Date": row["date"],
+                "Check In": row["check_in_time"],
+                "Check Out": row["check_out_time"],
+                "Status": row["status"],
+                "Confidence": f"{row['confidence']}%"
+            }
         )
 
 
+    st.dataframe(
+        table_data,
+        use_container_width=True
+    )
+    
+def get_attendance_history():
 
-    camera.release()
+    """
+    Get all attendance records
+    """
 
-    cv2.destroyAllWindows()
+    conn = get_connection()
+
+    cursor = conn.cursor()
 
 
-    st.session_state.camera_started = False
+    cursor.execute(
+        """
+        SELECT *
+        FROM attendance
+        ORDER BY date DESC, time DESC
+        """
+    )
 
-    st.rerun()
+
+    records = cursor.fetchall()
+
+
+    conn.close()
+
+
+    return records
+def get_attendance_history():
+
+    """
+    Get all attendance records
+    """
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM attendance
+        ORDER BY date DESC
+        """
+    )
+
+
+    records = cursor.fetchall()
+
+
+    conn.close()
+
+
+    return records
+def get_attendance_dataframe():
+
+    import pandas as pd
+
+    records = get_attendance_history()
+
+    data = []
+
+    for row in records:
+
+        data.append(
+            {
+                "User ID": row["user_id"],
+                "Date": row["date"],
+                "Check In": row["check_in_time"],
+                "Check Out": row["check_out_time"],
+                "Status": row["status"]
+            }
+        )
+
+    return pd.DataFrame(data)

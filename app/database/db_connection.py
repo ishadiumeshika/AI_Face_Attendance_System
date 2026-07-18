@@ -66,9 +66,9 @@ def create_tables():
 
 
 
-    # Attendance table
+# Attendance table
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS attendance (
+        CREATE TABLE IF NOT EXISTS attendance (
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -76,13 +76,17 @@ def create_tables():
 
         date TEXT NOT NULL,
 
-        time TEXT NOT NULL,
+        check_in_time TEXT,
+
+        check_out_time TEXT,
 
         status TEXT DEFAULT 'Present',
 
+        confidence REAL,
+
 
         FOREIGN KEY(user_id)
-        REFERENCES users(id)
+         REFERENCES users(id)
 
     )
     """)

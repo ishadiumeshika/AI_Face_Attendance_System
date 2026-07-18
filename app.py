@@ -2,14 +2,26 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 
 from app.ui.live_attendance import live_attendance_page
-
+from app.ui.employee_dashboard import employee_dashboard
+from app.ui.manager_dashboard import manager_dashboard
 
 st.set_page_config(
     page_title="AI Face Attendance System",
     page_icon="👤",
     layout="wide"
 )
+st.markdown(
+    """
+    <style>
 
+    section[data-testid="stSidebar"]{
+        background-color:#111827;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # -----------------------------
 # Session State Initialization
@@ -45,9 +57,21 @@ with st.sidebar:
     ]
 
 
-    # Logout appears only after login
+    # Add role-based menu items
 
     if st.session_state.logged_in:
+
+
+        if st.session_state.role == "Employee":
+
+            menu.append("My Attendance")
+
+
+        elif st.session_state.role == "Manager":
+
+            menu.append("Employee Attendance")
+
+
         menu.append("Logout")
 
 
@@ -59,16 +83,19 @@ with st.sidebar:
             "camera",
             "box-arrow-in-right",
             "person-plus",
+            "clipboard-data",
             "box-arrow-right"
         ],
         default_index=0
     )
 
 
+
     st.divider()
 
 
-    # Show current user
+
+    # Current logged user
 
     if st.session_state.logged_in:
 
@@ -92,6 +119,18 @@ if selected == "Live Attendance":
 
 
 
+elif selected == "My Attendance":
+
+    employee_dashboard()
+
+
+
+elif selected == "Employee Attendance":
+
+    manager_dashboard()
+
+
+
 elif selected == "Login":
 
     from app.ui.login_page import login_page
@@ -110,6 +149,7 @@ elif selected == "Register":
 
 elif selected == "Logout":
 
+
     st.session_state.logged_in = False
 
     st.session_state.user_id = None
@@ -123,4 +163,10 @@ elif selected == "Logout":
         "Logged out successfully"
     )
 
+
     st.rerun()
+    st.divider()
+
+    st.caption(
+    "AI Face Attendance System © 2026"
+    )

@@ -92,15 +92,16 @@ def main():
 
 
                     success = mark_attendance(
-                        user["id"]
+                       user["id"],
+                       100.0
                     )
 
 
                     if success:
 
-                        print(
-                            f"Attendance marked: {name}"
-                        )
+                     print(
+                           f"{name}: {success}"
+                     )
 
 
 
