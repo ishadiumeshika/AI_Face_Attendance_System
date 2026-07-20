@@ -3,30 +3,88 @@ import json
 
 from app.database.db_connection import get_connection
 
+
+
+# =========================
+# ADD USER
+# =========================
+
 def add_user(name, email, password):
-    """
-    Add a new employee.
-    """
 
     conn = get_connection()
     cursor = conn.cursor()
+
     try:
+
+        # Check duplicate email
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM users
+            WHERE email = ?
+            """,
+            (email,)
+        )
+
+        existing = cursor.fetchone()
+
+
+        if existing:
+
+            return "EMAIL_EXISTS"
+
+
+
+        # Generate employee ID
+
+     
+        cursor.execute(
+            """
+            SELECT MAX(
+                CAST(
+                    SUBSTR(employee_id,4) AS INTEGER
+                )
+            )
+            FROM users
+            WHERE employee_id LIKE 'EMP%'
+            """
+        )
+
+        last = cursor.fetchone()[0]
+
+
+        if last:
+
+            employee_id = f"EMP{last + 1:04d}"
+
+        else:
+
+            employee_id = "EMP1001"
+
+
+
+        # Insert user
 
         cursor.execute(
             """
             INSERT INTO users
             (
+                employee_id,
                 name,
                 email,
-                password
+                password,
+                role
             )
 
-            VALUES (?, ?, ?)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
+                employee_id,
                 name,
                 email,
-                password
+                password,
+                "Employee"
             )
         )
 
@@ -34,177 +92,191 @@ def add_user(name, email, password):
         conn.commit()
 
 
-        
+        user_id = cursor.lastrowid
 
 
         return user_id
 
 
-    except sqlite3.IntegrityError as e:
+
+    except Exception as e:
 
         conn.rollback()
 
+        print(
+            "Add user error:",
+            e
+        )
 
-        error_message = str(e)
+        return str(e)
 
-
-        if "email" in error_message:
-
-            return "EMAIL_EXISTS"
-
-
-        
-
-        return "ERROR"
 
 
     finally:
 
         conn.close()
-    # Check if email already exists
-
-    cursor.execute(
-        """
-        SELECT id
-        FROM users
-        WHERE email = ?
-        """,
-        (email,)
-    )
-
-    existing = cursor.fetchone()
-
-    if existing:
-
-        conn.close()
-
-        raise Exception(
-            "Email already registered"
-        )
 
 
-    # Generate Employee ID
-
-    cursor.execute(
-        """
-        SELECT id
-        FROM users
-        ORDER BY id DESC
-        LIMIT 1
-        """
-    )
-
-    last = cursor.fetchone()
 
 
-    if last:
 
-        employee_id = (
-            "EMP"
-            + str(
-                1000 + last["id"] + 1
-            )
-        )
+# =========================
+# GET ALL USERS WITH FACES
+# =========================
 
-    else:
+# =========================
+# GET ALL USERS
+# =========================
 
-        employee_id = "EMP1001"
-
-
-    # Insert new user
-
-    cursor.execute(
-        """
-        INSERT INTO users
-        (
-            employee_id,
-            name,
-            email,
-            password,
-            role
-        )
-
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (
-            employee_id,
-            name,
-            email,
-            password,
-            "Employee"
-        )
-    )
-
-
-    conn.commit()
-
-    user_id = cursor.lastrowid
-
-    conn.close()
-
-    return user_id, employee_id
 def get_all_users():
-    """
-    Return every face encoding together with user details.
-    """
 
     conn = get_connection()
     cursor = conn.cursor()
+
 
     cursor.execute(
         """
         SELECT
-            users.id,
-            users.name,
-            users.employee_id,
-            users.email,
-            face_encodings.encoding
+            id,
+            name,
+            employee_id,
+            email,
+            role
 
         FROM users
-
-        JOIN face_encodings
-        ON users.id = face_encodings.user_id
         """
     )
 
+
     users = cursor.fetchall()
+
 
     conn.close()
 
+
     return users
-def get_user_by_name(name):
-    """
-    Get one user by name.
-    """
+
+
+
+
+
+# =========================
+# TOTAL EMPLOYEES
+# =========================
+
+def get_total_employees():
 
     conn = get_connection()
     cursor = conn.cursor()
+
+
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM users
+        WHERE role='Employee'
+        """
+    )
+
+
+    count = cursor.fetchone()[0]
+
+
+    conn.close()
+
+
+    return count
+
+
+
+
+
+# =========================
+# GET USER BY NAME
+# =========================
+
+def get_user_by_name(name):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
 
     cursor.execute(
         """
         SELECT *
         FROM users
-        WHERE LOWER(name) = LOWER(?)
+        WHERE LOWER(name)=LOWER(?)
         """,
         (name,)
     )
 
+
     user = cursor.fetchone()
+
 
     conn.close()
 
+
     return user
+
+
+
+
+
+# =========================
+# GET USER BY EMAIL
+# =========================
+
+def get_user_by_email(email):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE email=?
+        """,
+        (email,)
+    )
+
+
+    user = cursor.fetchone()
+
+
+    conn.close()
+
+
+    return user
+
+
+
+
+
+# =========================
+# SAVE FACE ENCODING
+# =========================
+
 def add_face_encoding(user_id, face_encoding):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    encoding_json = json.dumps(face_encoding)
+
+    encoding_json = json.dumps(
+        face_encoding
+    )
+
 
     cursor.execute(
         """
         INSERT INTO face_encodings
-        (user_id, encoding)
+        (
+            user_id,
+            encoding
+        )
 
         VALUES (?, ?)
         """,
@@ -214,39 +286,63 @@ def add_face_encoding(user_id, face_encoding):
         )
     )
 
+
     conn.commit()
+
     conn.close()
+
+
+
+
+
+# =========================
+# GET USER BY ID
+# =========================
 
 def get_user_by_id(user_id):
 
     conn = get_connection()
     cursor = conn.cursor()
 
+
     cursor.execute(
         """
         SELECT *
         FROM users
-        WHERE id = ?
+        WHERE id=?
         """,
         (user_id,)
     )
 
+
     user = cursor.fetchone()
+
 
     conn.close()
 
+
     return user
+
+
+
+
+
+# =========================
+# LOGIN
+# =========================
+
 def login_user(email, password):
 
     conn = get_connection()
     cursor = conn.cursor()
 
+
     cursor.execute(
         """
         SELECT *
         FROM users
-        WHERE email = ?
-        AND password = ?
+        WHERE email=?
+        AND password=?
         """,
         (
             email,
@@ -254,25 +350,112 @@ def login_user(email, password):
         )
     )
 
+
     user = cursor.fetchone()
+
 
     conn.close()
 
+
     return user
+
+
+
+
+
+# =========================
+# DELETE USER
+# =========================
+
 def delete_user(user_id):
 
     conn = get_connection()
     cursor = conn.cursor()
 
+
+    # Delete face data first
+
     cursor.execute(
-        "DELETE FROM face_encodings WHERE user_id=?",
+        """
+        DELETE FROM face_encodings
+        WHERE user_id=?
+        """,
         (user_id,)
     )
 
+
+    # Delete user
+
     cursor.execute(
-        "DELETE FROM users WHERE id=?",
+        """
+        DELETE FROM users
+        WHERE id=?
+        """,
         (user_id,)
     )
+
+
+    conn.commit()
+
+    conn.close()
+
+def fix_missing_employee_ids():
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Find users without employee IDs
+    cursor.execute(
+        """
+        SELECT id
+        FROM users
+        WHERE employee_id IS NULL
+        """
+    )
+
+    users = cursor.fetchall()
+
+
+    # Find current last employee number
+    cursor.execute(
+        """
+        SELECT MAX(
+            CAST(SUBSTR(employee_id,4) AS INTEGER)
+        )
+        FROM users
+        WHERE employee_id LIKE 'EMP%'
+        """
+    )
+
+    last = cursor.fetchone()[0]
+
+
+    if last:
+        next_id = last + 1
+    else:
+        next_id = 1001
+
+
+
+    for user in users:
+
+        employee_id = f"EMP{next_id}"
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET employee_id = ?
+            WHERE id = ?
+            """,
+            (
+                employee_id,
+                user["id"]
+            )
+        )
+
+        next_id += 1
+
+
 
     conn.commit()
     conn.close()

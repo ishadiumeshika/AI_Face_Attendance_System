@@ -154,7 +154,23 @@ def employee_dashboard():
 
         for leave in leaves:
 
-            st.write(leave)
+            st.write(
+                f"**Reason:** {leave['reason']}"
+            )  
+
+            st.write(
+                f"**From:** {leave['from_date']}"
+            )
+
+            st.write(
+                f"**To:** {leave['to_date']}"
+            )
+
+            st.write(
+                f"**Status:** {leave['status']}"
+            )
+
+            st.divider()
 
 
     else:

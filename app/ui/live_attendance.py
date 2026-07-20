@@ -1,5 +1,3 @@
-from unicodedata import name
-
 import streamlit as st
 import cv2
 import time
@@ -21,18 +19,16 @@ def get_display_status():
 
 
     if 360 <= current_minutes < 480:
-        # 06:00 - 08:00
         return "Present"
 
 
     elif 480 <= current_minutes < 720:
-        # 08:00 - 12:00
         return "Late Present"
 
 
     else:
-        # After 12:00
         return "Absent"
+
 
 
 
@@ -42,23 +38,44 @@ def live_attendance_page():
 
     st.title("📷 Live Attendance")
 
-    if "unknown_count" not in st.session_state:
-
-     st.session_state.unknown_count = 0
 
     st.write(
         "Real-time face recognition attendance system"
     )
 
 
-    start = st.checkbox(
-        "Start Camera"
-    )
+    # Session counter
 
+    if "unknown_count" not in st.session_state:
+
+        st.session_state.unknown_count = 0
+
+
+
+    st.markdown("""
+    <style>
+    div.stButton > button {
+       width: 300px;
+       height: 90px;
+       font-size: 28px;
+       border-radius: 20px;
+       margin: auto;
+       display: block;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    start = st.button("📷 Open Camera")
+
+
+
+    # Streamlit placeholders
 
     frame_window = st.empty()
 
     status_window = st.empty()
+
+    unknown_window = st.empty()
 
 
 
@@ -75,7 +92,7 @@ def live_attendance_page():
         if not camera.isOpened():
 
             st.error(
-                "Cannot open camera"
+                "❌ Cannot open camera"
             )
 
             return
@@ -83,9 +100,8 @@ def live_attendance_page():
 
 
         status_window.success(
-            "Camera started"
+            "📷 Camera started"
         )
-
 
 
         marked_users = set()
@@ -95,14 +111,13 @@ def live_attendance_page():
         while start:
 
 
-
             ret, frame = camera.read()
 
 
 
             if not ret:
 
-                st.error(
+                status_window.error(
                     "Camera frame error"
                 )
 
@@ -117,37 +132,41 @@ def live_attendance_page():
 
 
 
-
-            for (top, right, bottom, left), name in zip(
+            for (top, right, bottom, left), person_name in zip(
                 locations,
                 names
             ):
 
 
 
-                color = (0, 0, 255)
-
-                if name == "Unknown":
-
-                  st.session_state.unknown_count += 1
-
-                if name != "Unknown":
-
-
-                    color = (0, 255, 0)
+                color = (0,0,255)
 
 
 
-                    if name not in marked_users:
+                if person_name == "Unknown":
+
+
+                    st.session_state.unknown_count += 1
 
 
 
-                        user = get_user_by_name(name)
+                else:
+
+
+                    color = (0,255,0)
+
+
+
+                    if person_name not in marked_users:
+
+
+                        user = get_user_by_name(
+                            person_name
+                        )
 
 
 
                         if user:
-
 
 
                             result = mark_attendance(
@@ -156,20 +175,19 @@ def live_attendance_page():
                             )
 
 
-                            print(
-                                f"{name}: {result}"
-                            )
-
-
                             status_window.success(
-                                f"{name}: {result}"
+                                f"✅ {person_name}: {result}"
                             )
 
 
-                            marked_users.add(name)
+                            marked_users.add(
+                                person_name
+                            )
 
 
 
+
+                # Draw face box
 
                 cv2.rectangle(
                     frame,
@@ -190,8 +208,8 @@ def live_attendance_page():
 
 
 
-                display_text = (
-                    f"{name} | "
+                text = (
+                    f"{person_name} | "
                     f"{attendance_status} | "
                     f"{current_time}"
                 )
@@ -200,19 +218,26 @@ def live_attendance_page():
 
                 cv2.putText(
                     frame,
-                    display_text,
-                    (left, top - 10),
+                    text,
+                    (left, top-10),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
+                    0.7,
                     color,
                     2
                 )
 
-            st.metric(
-               "Unknown Faces",
-                st.session_state.unknown_count
-                )
 
+
+            # Update only one metric
+
+            unknown_window.metric(
+                "Unknown Faces",
+                st.session_state.unknown_count
+            )
+
+
+
+            # Display camera
 
             frame_window.image(
                 frame,
@@ -232,11 +257,14 @@ def live_attendance_page():
 
 
         status_window.info(
-            "Camera stopped"
+            "⏹ Camera stopped"
         )
 
-        st.divider()
 
-        st.caption(
+
+    st.divider()
+
+
+    st.caption(
         "AI Face Attendance System © 2026"
-      )
+    )

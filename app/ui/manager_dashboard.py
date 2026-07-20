@@ -7,7 +7,8 @@ from app.database.attendance import (
 
 from app.database.user import (
     get_all_users,
-    get_user_by_id
+    get_user_by_id,
+    get_total_employees
 )
 
 from app.database.leave import (
@@ -38,7 +39,7 @@ def manager_dashboard():
     # DASHBOARD STATISTICS
     # =====================================
 
-    total_employees = len(users)
+    total_employees = get_total_employees()
 
     present = len(
         [r for r in records if r["status"] == "Present"]
@@ -111,10 +112,7 @@ def manager_dashboard():
                     if row["check_out_time"]
                     else "-",
                 "Status": row["status"],
-                "Confidence":
-                    f"{row['confidence']}%"
-                    if row["confidence"]
-                    else "-"
+                
             }
         )
 
@@ -147,7 +145,7 @@ def manager_dashboard():
 
         user_data.append(
             {
-                "ID": user["id"],
+                "Employee ID": user["employee_id"],
                 "Name": user["name"],
                 "Role": user["role"]
             }

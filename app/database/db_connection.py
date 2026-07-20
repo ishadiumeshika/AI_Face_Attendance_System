@@ -35,11 +35,19 @@ def create_tables():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
 
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        name TEXT NOT NULL UNIQUE,
+       employee_id TEXT UNIQUE NOT NULL,
 
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+       name TEXT NOT NULL,
+
+       email TEXT UNIQUE NOT NULL,
+
+       password TEXT NOT NULL,
+
+       role TEXT DEFAULT 'Employee',
+
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
     )
     """)

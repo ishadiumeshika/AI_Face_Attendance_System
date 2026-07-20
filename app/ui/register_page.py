@@ -1,3 +1,5 @@
+import email
+
 import streamlit as st
 import cv2
 import face_recognition
@@ -5,56 +7,108 @@ import time
 
 from app.database.user import (
     add_user,
-    add_face_encoding,
-    get_user_by_name
+    add_face_encoding
 )
+import re
 
+
+def is_valid_email(email):
+    pattern = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+    return re.match(pattern, email)
+
+
+def is_valid_password(password):
+    return (
+        len(password) >= 8
+        and any(char.isupper() for char in password)
+        and any(char.islower() for char in password)
+        and any(char.isdigit() for char in password)
+    )
 
 def register_page():
 
     st.title("📝 Register New User")
-
 
     st.write(
         "Create your account and register your face."
     )
 
 
+    # User details
     name = st.text_input(
         "Full Name"
     )
-
 
     email = st.text_input(
         "Email Address"
     )
 
-
     password = st.text_input(
         "Password",
         type="password"
     )
+    st.info(
+    """
+    Password Requirements:
+    - Minimum 8 characters
+    - One uppercase letter
+    - One lowercase letter
+    - One number
+    """
+    )
 
+    st.divider()
 
 
     if st.button("📷 Register Face"):
 
 
+        # Validation
+
+        # Validation
+
         if not name or not email or not password:
 
             st.error(
-                "Please fill all fields."
+                 "⚠️ Please fill all fields."
             )
 
             return
 
 
+        if not is_valid_email(email):
 
-    
+            st.error(
+            "❌ Invalid email address.\n"
+            "Example: user@gmail.com"
+            )
+
+            return
+
+
+        if not is_valid_password(password):
+
+            st.error(
+                """
+                ❌ Password must contain:
+
+                • At least 8 characters
+                • One uppercase letter
+                • One lowercase letter
+                • One number
+                """
+          )
+
+            return
+
+
+
         st.info(
             "Look at the camera. Capturing face samples..."
         )
 
+
+        # Open camera
 
         camera = cv2.VideoCapture(0)
 
@@ -62,7 +116,7 @@ def register_page():
         if not camera.isOpened():
 
             st.error(
-                "Camera not found."
+                "❌ Camera not found."
             )
 
             return
@@ -71,13 +125,20 @@ def register_page():
 
         encodings = []
 
-
         sample_count = 20
 
 
+        # UI containers
+
         camera_window = st.empty()
 
+        progress_text = st.empty()
 
+        progress_bar = st.progress(0)
+
+
+
+        # Capture faces
 
         while len(encodings) < sample_count:
 
@@ -87,9 +148,15 @@ def register_page():
 
             if not ret:
 
+                st.error(
+                    "Camera error."
+                )
+
                 break
 
 
+
+            # Show camera
 
             camera_window.image(
                 frame,
@@ -98,12 +165,16 @@ def register_page():
 
 
 
+            # Convert frame
+
             rgb_frame = cv2.cvtColor(
                 frame,
                 cv2.COLOR_BGR2RGB
             )
 
 
+
+            # Detect face encoding
 
             faces = face_recognition.face_encodings(
                 rgb_frame
@@ -119,8 +190,16 @@ def register_page():
                 )
 
 
-                st.write(
-                    f"Captured {len(encodings)}/{sample_count}"
+                current = len(encodings)
+
+
+                progress_text.write(
+                    f"Captured {current}/{sample_count} face samples"
+                )
+
+
+                progress_bar.progress(
+                    current / sample_count
                 )
 
 
@@ -131,15 +210,26 @@ def register_page():
         camera.release()
 
 
+        camera_window.empty()
+
+
+
+        # Check capture result
 
         if len(encodings) < sample_count:
 
 
             st.error(
-                "Face registration failed. Try again."
+                "❌ Face registration failed. Please try again."
             )
 
             return
+
+
+
+        st.success(
+            "✅ Face samples captured successfully."
+        )
 
 
 
@@ -157,28 +247,30 @@ def register_page():
 
 
             st.error(
-                "❌ This email is already registered. Use another email."
+                "❌ This email is already registered."
             )
 
             return
 
 
 
-
-
-        elif result == "ERROR":
+        elif isinstance(result, str):
 
 
             st.error(
-                "❌ Registration failed."
+               f"❌ Registration failed: {result}"
+      )
+
+            
+            
+            st.write(
+                 "Check terminal for database error."
             )
 
             return
 
 
-
         else:
-
 
             user_id = result
 
@@ -196,11 +288,17 @@ def register_page():
 
 
 
+        # Final message
+
         st.success(
-            f"✅ Registration completed. Your User ID is {user_id}"
+            "🎉 Registration completed successfully!"
         )
 
 
         st.info(
-            f"Saved {len(encodings)} face samples."
+            f"""
+            User ID: {user_id}
+
+            Saved Face Samples: {len(encodings)}
+            """
         )

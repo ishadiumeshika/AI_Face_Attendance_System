@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+
+  face-attendance:
+
+    build: .
+
+    container_name: ai_face_attendance
+
+    ports:
+      - "8501:8501"
+
+    volumes:
+      - ./database:/app/database
+
+    restart: always
